@@ -4,9 +4,29 @@ from barcode.writer import ImageWriter
 import cups, time, os
 import tkinter as tk  # Add this explicitly at the top
 
-value = "A04444"
-printer = "PDF"
-preview = 2
+#functie de printare etichete pe un printer specificat cu un preview opțional
+# Aceasta funcție creează o imagine cu un cod de bare și text, apoi o trimite la imprimantă.
+# Dacă este specificat un preview, afișează o fereastră de previzualizare înainte de a imprima.
+# Dimensiunea etichetei este de 9x5 cm la 300 DPI, cu un cadru exterior și două cadre interioare pentru codul de bare și text.
+# Codul de bare este generat folosind formatul Code128, iar textul este afișat sub codul de bare cu
+# o dimensiune de font maximizată pentru a se potrivi în cadrul textului
+# Imaginile sunt create folosind biblioteca PIL, iar imprimarea se face prin intermediul
+# bibliotecii CUPS pentru gestionarea imprimantelor.
+# Această funcție este utilă pentru a crea etichete personalizate cu coduri de bare și text, care pot fi utilizate în diverse aplicații, cum ar fi etichetarea produselor, inventariere sau organizarea documentelor
+#mod de utilizare in cadrul unui program se copie fisierul print_label.py in directorul de lucru
+# si se apeleaza functia print_label_standalone cu parametrii corespunzători:
+# - value: textul de afișat pe etichetă
+# - printer: numele imprimantei pe care se va face printarea
+# - preview: 0 pentru a nu afișa previzualizarea, 1-3 pentru o previzualizare de 3 secunde, >3 pentru o previzualizare de 5 secunde 
+
+# se recomanda instalarea si setarea imprimantei in sistemul de operare
+# pentru a putea fi utilizata de catre biblioteca CUPS 
+# se verifica proprietatile imprimantei in cups sa fie setata dimensiunea corecta a etichetei
+# pentru a instala biblioteca barcode se foloseste comanda pip install python-barcode
+# pentru a instala biblioteca PIL se foloseste comanda pip install pillow
+# pentru a instala biblioteca CUPS se foloseste comanda pip install pycups
+# pentru a instala biblioteca Tkinter se foloseste comanda sudo apt-get install python3-tk
+
 
 def create_label_image(text):
     """
@@ -213,5 +233,10 @@ def print_label_standalone(value, printer, preview=0):
             os.remove('final_label.png')
         return False
 
+
+
 # Test the function
-print_label_standalone(value, printer, preview)
+#value = "A04444"
+#printer = "PDF"
+#preview = 2
+#print_label_standalone(value, printer, preview)
