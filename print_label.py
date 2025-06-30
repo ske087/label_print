@@ -131,6 +131,9 @@ def print_label_standalone(value, printer, preview=0):
     Returns:
         bool: True if printing was successful, False otherwise
     """
+    # For tracking if file was created
+    file_created = False
+    
     try:
         # Debug output
         print(f"Preview value: {preview}")
@@ -139,6 +142,7 @@ def print_label_standalone(value, printer, preview=0):
         # Create the label image
         label_img = create_label_image(value)
         label_img.save('final_label.png')
+        file_created = True
         
         # Convert preview to int if it's a string
         if isinstance(preview, str):
@@ -170,10 +174,12 @@ def print_label_standalone(value, printer, preview=0):
                 conn.printFile(printer, 'final_label.png', "Label Print", {})
                 printed = True
                 preview_window.destroy()
+                root.quit()  # Important! This ensures mainloop exits
             
             # Function to close without printing
             def do_cancel():
                 preview_window.destroy()
+                root.quit()  # Important! This ensures mainloop exits
             
             # Display the image
             img = Image.open('final_label.png')
@@ -213,30 +219,32 @@ def print_label_standalone(value, printer, preview=0):
             root.mainloop()
             
             if not printed:
-                # User cancelled, clean up and return False
-                os.remove('final_label.png')
+                print("User cancelled printing")
                 return False
+                
+            return True
         else:
             print("Direct printing without preview...")
             # Direct printing without preview (preview = 0)
             conn = cups.Connection()
             conn.printFile(printer, 'final_label.png', "Label Print", {})
-        
-        # Clean up
-        os.remove('final_label.png')
-        return True
-        
+            return True
+            
     except Exception as e:
         print(f"Error printing label: {str(e)}")
-        # Try to clean up if the file exists
-        if os.path.exists('final_label.png'):
-            os.remove('final_label.png')
         return False
+        
+    finally:
+        # This block always executes, ensuring cleanup
+        print("Cleaning up temporary files...")
+        if file_created and os.path.exists('final_label.png'):
+            try:
+                os.remove('final_label.png')
+                print("Cleanup successful")
+            except Exception as e:
+                print(f"Warning: Could not remove temporary file: {str(e)}")
 
-
-
-# Test the function
-#value = "A04444"
-#printer = "PDF"
-#preview = 2
-#print_label_standalone(value, printer, preview)
+value = "A012345"
+printer = "PDF"
+preview = 3  # Set preview duration (0 = no preview, 1-3 = 3s, >3 = 5s)
+print_label_standalone(value, printer, preview)
