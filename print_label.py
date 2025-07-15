@@ -88,6 +88,7 @@ def create_label_image(text):
     max_font_size = text_frame_height
     min_font_size = 10
     best_font_size = min_font_size
+    
     for font_size in range(min_font_size, max_font_size + 1):
         try:
             font = ImageFont.truetype(font_path, font_size)
@@ -96,9 +97,17 @@ def create_label_image(text):
             break
         dummy_img = Image.new('RGB', (1, 1))
         dummy_draw = ImageDraw.Draw(dummy_img)
-        text_bbox = dummy_draw.textbbox((0, 0), text, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        text_height = text_bbox[3] - text_bbox[1]
+        
+        # Use textsize for older Pillow versions (compatible with both old and new)
+        try:
+            # Try new method first (Pillow >= 8.0.0)
+            text_bbox = dummy_draw.textbbox((0, 0), text, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+        except AttributeError:
+            # Fall back to old method (Pillow < 8.0.0)
+            text_width, text_height = dummy_draw.textsize(text, font=font)
+        
         if text_width > text_frame_width or text_height > text_frame_height:
             break
         best_font_size = font_size
@@ -108,10 +117,19 @@ def create_label_image(text):
         font = ImageFont.truetype(font_path, best_font_size)
     except IOError:
         font = ImageFont.load_default()
+    
     draw = ImageDraw.Draw(label_img)
-    text_bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
+    
+    # Get final text dimensions using compatible method
+    try:
+        # Try new method first (Pillow >= 8.0.0)
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+    except AttributeError:
+        # Fall back to old method (Pillow < 8.0.0)
+        text_width, text_height = draw.textsize(text, font=font)
+    
     text_x = text_frame_x + (text_frame_width - text_width) // 2
     text_y = text_frame_y + (text_frame_height - text_height) // 2
     draw.text((text_x, text_y), text, font=font, fill='black')
