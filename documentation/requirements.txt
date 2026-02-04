@@ -1,6 +1,5 @@
 python-barcode
 pillow
 pycups
-kivy
-reportlab
-
+reportlab 
+pycups

@@ -1,7 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
-import cups, time, os
+import cups, time, os, datetime
+from print_label_pdf import PDFLabelGenerator
 
 #functie de printare etichete pe un printer specificat cu un preview opțional
 # Aceasta funcție creează o imagine cu un cod de bare și text, apoi o trimite la imprimantă.
@@ -29,114 +30,141 @@ import cups, time, os
 
 def create_label_image(text):
     """
-    Create a label image with barcode and text.
+    Create a label image with 3 rows: label + barcode for each field.
     
     Args:
-        text (str): The text to encode in the barcode and display
+        text (str): Combined text in format "SAP|CANTITATE|LOT" or single value
         
     Returns:
         PIL.Image: The generated label image
     """
-    # Label dimensions for 9x5 cm at 300 DPI
-    label_width = 1063   # 9 cm
-    label_height = 591   # 5 cm
-
-    # Outer frame (95% of label, centered)
-    outer_frame_width = int(label_width * 0.95)
-    outer_frame_height = int(label_height * 0.95)
-    outer_frame_x = (label_width - outer_frame_width) // 2
-    outer_frame_y = (label_height - outer_frame_height) // 2
-
-    # Barcode frame (top, inside outer frame)
-    barcode_frame_width = int(outer_frame_width * 0.90)
-    barcode_frame_height = int(outer_frame_height * 0.60)
-    barcode_frame_x = outer_frame_x + (outer_frame_width - barcode_frame_width) // 2
-    barcode_frame_y = outer_frame_y
-
-    # Text frame (immediately below barcode frame)
-    text_frame_width = int(outer_frame_width * 0.90)
-    text_frame_height = int(outer_frame_height * 0.35)
-    text_frame_x = outer_frame_x + (outer_frame_width - text_frame_width) // 2
-    gap_between_frames = 5  # or 0 for no gap
-    text_frame_y = barcode_frame_y + barcode_frame_height + gap_between_frames
-
-    # Generate barcode image (no text), at higher resolution
+    # Parse the text input
+    parts = text.split('|') if '|' in text else [text, '', '']
+    sap_nr = parts[0].strip() if len(parts) > 0 else ''
+    cantitate = parts[1].strip() if len(parts) > 1 else ''
+    lot_number = parts[2].strip() if len(parts) > 2 else ''
+    
+    # Label dimensions (narrower, 3 rows)
+    label_width = 800   # 8 cm
+    label_height = 600  # 6 cm
+    
+    # Create canvas
+    label_img = Image.new('RGB', (label_width, label_height), 'white')
+    draw = ImageDraw.Draw(label_img)
+    
+    # Row setup - 3 equal rows
+    row_height = label_height // 3
+    left_margin = 15
+    row_spacing = 3
+    
+    # Fonts
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    try:
+        label_font = ImageFont.truetype(font_path, 16)
+        value_font = ImageFont.truetype(font_path, 14)
+    except IOError:
+        label_font = ImageFont.load_default()
+        value_font = ImageFont.load_default()
+    
+    # Data for 3 rows
+    rows_data = [
+        ("SAP-Nr", sap_nr),
+        ("Cantitate", cantitate),
+        ("Lot Nr", lot_number),
+    ]
+    
+    # Generate barcodes first
     CODE128 = barcode.get_barcode_class('code128')
     writer_options = {
         "write_text": False,
-        "module_width": 0.5,  # default is 0.2, increase for higher res
-        "module_height": barcode_frame_height,  # match frame height
-        "quiet_zone": 3.5,    # default, can adjust if needed
-        "font_size": 0        # no text
+        "module_width": 0.4,
+        "module_height": 8,
+        "quiet_zone": 2,
+        "font_size": 0
     }
-    code = CODE128(text, writer=ImageWriter())
-    filename = code.save('label_barcode', options=writer_options)
-    barcode_img = Image.open(filename)
-
-    # Now resize barcode to exactly fit barcode frame (stretch, do not keep aspect ratio)
-    barcode_resized = barcode_img.resize((barcode_frame_width, barcode_frame_height), Image.LANCZOS)
-
-    # Create label image
-    label_img = Image.new('RGB', (label_width, label_height), 'white')
-
-    # Paste barcode centered in barcode frame
-    label_img.paste(barcode_resized, (barcode_frame_x, barcode_frame_y))
-
-    # Draw text in text frame, maximize font size to fit frame (keep sharpness)
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    max_font_size = text_frame_height
-    min_font_size = 10
-    best_font_size = min_font_size
     
-    for font_size in range(min_font_size, max_font_size + 1):
-        try:
-            font = ImageFont.truetype(font_path, font_size)
-        except IOError:
-            font = ImageFont.load_default()
-            break
-        dummy_img = Image.new('RGB', (1, 1))
-        dummy_draw = ImageDraw.Draw(dummy_img)
+    barcode_images = []
+    for _, value in rows_data:
+        if value:
+            try:
+                code = CODE128(value[:25], writer=ImageWriter())
+                filename = code.save('temp_barcode', options=writer_options)
+                barcode_img = Image.open(filename)
+                barcode_images.append(barcode_img)
+            except:
+                barcode_images.append(None)
+        else:
+            barcode_images.append(None)
+    
+    # Draw each row with label and barcode
+    for idx, ((label_name, value), barcode_img) in enumerate(zip(rows_data, barcode_images)):
+        row_y = idx * row_height
         
-        # Use textsize for older Pillow versions (compatible with both old and new)
-        try:
-            # Try new method first (Pillow >= 8.0.0)
-            text_bbox = dummy_draw.textbbox((0, 0), text, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
-        except AttributeError:
-            # Fall back to old method (Pillow < 8.0.0)
-            text_width, text_height = dummy_draw.textsize(text, font=font)
+        # Draw label name
+        draw.text(
+            (left_margin, row_y + 3),
+            label_name,
+            fill='black',
+            font=label_font
+        )
         
-        if text_width > text_frame_width or text_height > text_frame_height:
-            break
-        best_font_size = font_size
-
-    # Use the best font size found
+        # Draw barcode if available
+        if barcode_img:
+            # Resize barcode to fit in row width
+            barcode_width = label_width - left_margin - 10
+            barcode_height = row_height - 25
+            barcode_resized = barcode_img.resize((barcode_width, barcode_height), Image.LANCZOS)
+            label_img.paste(barcode_resized, (left_margin, row_y + 20))
+        else:
+            # Fallback: show value as text
+            draw.text(
+                (left_margin, row_y + 25),
+                value if value else "(empty)",
+                fill='black',
+                font=value_font
+            )
+    
+    # Clean up temporary barcode files
     try:
-        font = ImageFont.truetype(font_path, best_font_size)
-    except IOError:
-        font = ImageFont.load_default()
+        if os.path.exists('temp_barcode.png'):
+            os.remove('temp_barcode.png')
+    except:
+        pass
     
-    draw = ImageDraw.Draw(label_img)
-    
-    # Get final text dimensions using compatible method
-    try:
-        # Try new method first (Pillow >= 8.0.0)
-        text_bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = text_bbox[2] - text_bbox[0]
-        text_height = text_bbox[3] - text_bbox[1]
-    except AttributeError:
-        # Fall back to old method (Pillow < 8.0.0)
-        text_width, text_height = draw.textsize(text, font=font)
-    
-    text_x = text_frame_x + (text_frame_width - text_width) // 2
-    text_y = text_frame_y + (text_frame_height - text_height) // 2
-    draw.text((text_x, text_y), text, font=font, fill='black')
-
-    os.remove(filename)  # Clean up temporary barcode file
     return label_img
 
-def print_label_standalone(value, printer, preview=0):
+
+def create_label_pdf(text):
+    """
+    Create a high-quality PDF label with 3 rows: label + barcode for each field.
+    PDFs are saved to the pdf_backup folder.
+    
+    Args:
+        text (str): Combined text in format "SAP|CANTITATE|LOT" or single value
+        
+    Returns:
+        str: Path to the generated PDF file
+    """
+    # Parse the text input
+    parts = text.split('|') if '|' in text else [text, '', '']
+    sap_nr = parts[0].strip() if len(parts) > 0 else ''
+    cantitate = parts[1].strip() if len(parts) > 1 else ''
+    lot_number = parts[2].strip() if len(parts) > 2 else ''
+    
+    # Create PDF using high-quality generator
+    generator = PDFLabelGenerator()
+    
+    # Ensure pdf_backup folder exists
+    pdf_backup_dir = 'pdf_backup'
+    os.makedirs(pdf_backup_dir, exist_ok=True)
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    pdf_filename = os.path.join(pdf_backup_dir, f"final_label_{timestamp}.pdf")
+    
+    return generator.create_label_pdf(sap_nr, cantitate, lot_number, pdf_filename)
+
+
+def print_label_standalone(value, printer, preview=0, use_pdf=True):
     """
     Print a label with the specified text on the specified printer.
     
@@ -144,21 +172,33 @@ def print_label_standalone(value, printer, preview=0):
         value (str): The text to print on the label
         printer (str): The name of the printer to use
         preview (int): 0 = no preview, 1-3 = 3s preview, >3 = 5s preview
+        use_pdf (bool): True to use PDF (recommended for quality), False for PNG
     
     Returns:
         bool: True if printing was successful, False otherwise
     """
     # For tracking if file was created
     file_created = False
+    temp_file = None
     
     try:
         # Debug output
         print(f"Preview value: {preview}")
         print(f"Preview type: {type(preview)}")
+        print(f"Using format: {'PDF' if use_pdf else 'PNG'}")
         
-        # Create the label image
-        label_img = create_label_image(value)
-        label_img.save('final_label.png')
+        # Create label in selected format
+        if use_pdf:
+            temp_file = create_label_pdf(value)
+            print(f"PDF label created: {temp_file}")
+            print(f"PDF backup saved to: {temp_file}")
+        else:
+            # Create the label image (PNG)
+            label_img = create_label_image(value)
+            temp_file = 'final_label.png'
+            label_img.save(temp_file)
+            print(f"PNG label created: {temp_file}")
+        
         file_created = True
         
         # Convert preview to int if it's a string
@@ -166,7 +206,6 @@ def print_label_standalone(value, printer, preview=0):
             preview = int(preview)
         
         if preview > 0:  # Any value above 0 shows a preview message
-            print("Label preview created: final_label.png")
             # Calculate preview duration in seconds
             if 1 <= preview <= 3:
                 preview_sec = 3  # 3 seconds
@@ -188,14 +227,22 @@ def print_label_standalone(value, printer, preview=0):
             # Print after preview
             print("Sending to printer...")
             conn = cups.Connection()
-            conn.printFile(printer, 'final_label.png', "Label Print", {})
+            conn.printFile(printer, temp_file, "Label Print", {})
             return True
         else:
             print("Direct printing without preview...")
             # Direct printing without preview (preview = 0)
-            conn = cups.Connection()
-            conn.printFile(printer, 'final_label.png', "Label Print", {})
-            return True
+            try:
+                conn = cups.Connection()
+                conn.printFile(printer, temp_file, "Label Print", {})
+                print(f"Label sent to printer: {printer}")
+                return True
+            except Exception as e:
+                # If printing fails, save to file as fallback
+                print(f"Printer error: {str(e)}")
+                print("Label already saved to file as fallback...")
+                print(f"Label file: {temp_file}")
+                return True
             
     except Exception as e:
         print(f"Error printing label: {str(e)}")
@@ -203,12 +250,10 @@ def print_label_standalone(value, printer, preview=0):
         
     finally:
         # This block always executes, ensuring cleanup
-        print("Cleaning up temporary files...")
-        if file_created and os.path.exists('final_label.png'):
-            try:
-                os.remove('final_label.png')
-                print("Cleanup successful")
-            except Exception as e:
-                print(f"Warning: Could not remove temporary file: {str(e)}")
+        if use_pdf:
+            print(f"Cleanup complete - PDF backup saved to pdf_backup folder")
+        else:
+            print("Cleanup complete - label file retained for reference")
+
 
 # Main code removed - import this module or run as part of the Kivy GUI application
