@@ -262,7 +262,4 @@ def print_label_standalone(value, printer, preview=0):
             except Exception as e:
                 print(f"Warning: Could not remove temporary file: {str(e)}")
 
-value = "A012345"
-printer = "PDF"
-preview = 3  # Set preview duration (0 = no preview, 1-3 = 3s, >3 = 5s)
-print_label_standalone(value, printer, preview)
+# Main code removed - import this module or run as part of the Kivy GUI application
