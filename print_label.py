@@ -1,8 +1,7 @@
-from PIL import Image, ImageTk, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
 import cups, time, os
-import tkinter as tk  # Add this explicitly at the top
 
 #functie de printare etichete pe un printer specificat cu un preview opțional
 # Aceasta funcție creează o imagine cu un cod de bare și text, apoi o trimite la imprimantă.
@@ -166,80 +165,30 @@ def print_label_standalone(value, printer, preview=0):
         if isinstance(preview, str):
             preview = int(preview)
         
-        if preview > 0:  # Any value above 0 shows a preview
-            print("Showing preview window...")
-            # Calculate preview duration in milliseconds
+        if preview > 0:  # Any value above 0 shows a preview message
+            print("Label preview created: final_label.png")
+            # Calculate preview duration in seconds
             if 1 <= preview <= 3:
-                preview_ms = 3000  # 3 seconds
+                preview_sec = 3  # 3 seconds
             else:  # preview > 3
-                preview_ms = 5000  # 5 seconds
-                
-            # Create a Tkinter window for preview - simpler approach
-            root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            preview_window = tk.Toplevel(root)
-            preview_window.title("Label Preview")
-            preview_window.geometry("1063x691")  # A bit taller to accommodate buttons
+                preview_sec = 5  # 5 seconds
             
-            # Track if printing was done
-            printed = False
+            print(f"Printing in {preview_sec} seconds... (Press Ctrl+C to cancel)")
             
-            # Function to print and close the preview
-            def do_print():
-                nonlocal printed
-                print("Printing from preview...")
-                conn = cups.Connection()
-                conn.printFile(printer, 'final_label.png', "Label Print", {})
-                printed = True
-                preview_window.destroy()
-                root.quit()  # Important! This ensures mainloop exits
-            
-            # Function to close without printing
-            def do_cancel():
-                preview_window.destroy()
-                root.quit()  # Important! This ensures mainloop exits
-            
-            # Display the image
-            img = Image.open('final_label.png')
-            img_tk = ImageTk.PhotoImage(img)
-            label = tk.Label(preview_window, image=img_tk)
-            label.image = img_tk  # Keep reference
-            label.pack(pady=10)
-            
-            # Add a timer label
-            timer_text = f"Auto-printing in {preview_ms//1000} seconds..."
-            timer_label = tk.Label(preview_window, text=timer_text, font=("Arial", 10))
-            timer_label.pack(pady=(0, 5))
-            
-            # Button frame
-            btn_frame = tk.Frame(preview_window)
-            btn_frame.pack(pady=10)
-            
-            # Add print and cancel buttons
-            print_btn = tk.Button(btn_frame, text="Print Now", command=do_print, 
-                                font=("Arial", 12), bg="#4CAF50", fg="white", padx=20, pady=5)
-            print_btn.pack(side="left", padx=10)
-            
-            cancel_btn = tk.Button(btn_frame, text="Cancel", command=do_cancel, 
-                                font=("Arial", 12), bg="#f44336", fg="white", padx=20, pady=5)
-            cancel_btn.pack(side="left", padx=10)
-            
-            # Auto-print after the specified time
-            print(f"Setting auto-print timer for {preview_ms}ms")
-            preview_window.after(preview_ms, do_print)
-            
-            # Make sure the window stays on top
-            preview_window.attributes('-topmost', True)
-            preview_window.update()
-            preview_window.attributes('-topmost', False)
-            
-            # Wait for the window to close
-            root.mainloop()
-            
-            if not printed:
-                print("User cancelled printing")
+            # Simple countdown timer using time.sleep
+            try:
+                for i in range(preview_sec, 0, -1):
+                    print(f"  {i}...", end=" ", flush=True)
+                    time.sleep(1)
+                print("\nPrinting now...")
+            except KeyboardInterrupt:
+                print("\nCancelled by user")
                 return False
-                
+            
+            # Print after preview
+            print("Sending to printer...")
+            conn = cups.Connection()
+            conn.printFile(printer, 'final_label.png', "Label Print", {})
             return True
         else:
             print("Direct printing without preview...")
