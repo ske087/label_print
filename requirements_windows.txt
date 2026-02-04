@@ -1,0 +1,5 @@
+python-barcode
+pillow
+reportlab
+kivy
+pywin32

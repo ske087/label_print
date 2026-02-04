@@ -18,7 +18,8 @@ from kivy.graphics import Color, Rectangle
 
 import os
 import threading
-from print_label import print_label_standalone
+import platform
+from print_label import print_label_standalone, get_available_printers
 from kivy.clock import Clock
 
 # Set window size - portrait/phone dimensions (375x667 like iPhone)
@@ -37,15 +38,8 @@ class LabelPrinterApp(App):
         self.available_printers = self.get_available_printers()
     
     def get_available_printers(self):
-        """Get list of available printers from CUPS"""
-        try:
-            import cups
-            conn = cups.Connection()
-            printers = conn.getPrinters()
-            return list(printers.keys()) if printers else ["PDF"]
-        except Exception as e:
-            print(f"Error getting printers: {e}")
-            return ["PDF"]
+        """Get list of available printers (cross-platform)"""
+        return get_available_printers()
     
     def build(self):
         """Build the simplified single-column UI"""

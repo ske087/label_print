@@ -1,31 +1,75 @@
 from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
-import cups, time, os, datetime
+import time
+import os
+import datetime
+import platform
+import subprocess
 from print_label_pdf import PDFLabelGenerator
 
-#functie de printare etichete pe un printer specificat cu un preview opțional
-# Aceasta funcție creează o imagine cu un cod de bare și text, apoi o trimite la imprimantă.
-# Dacă este specificat un preview, afișează o fereastră de previzualizare înainte de a imprima.
-# Dimensiunea etichetei este de 9x5 cm la 300 DPI, cu un cadru exterior și două cadre interioare pentru codul de bare și text.
-# Codul de bare este generat folosind formatul Code128, iar textul este afișat sub codul de bare cu
-# o dimensiune de font maximizată pentru a se potrivi în cadrul textului
-# Imaginile sunt create folosind biblioteca PIL, iar imprimarea se face prin intermediul
-# bibliotecii CUPS pentru gestionarea imprimantelor.
-# Această funcție este utilă pentru a crea etichete personalizate cu coduri de bare și text, care pot fi utilizate în diverse aplicații, cum ar fi etichetarea produselor, inventariere sau organizarea documentelor
-#mod de utilizare in cadrul unui program se copie fisierul print_label.py in directorul de lucru
-# si se apeleaza functia print_label_standalone cu parametrii corespunzători:
-# - value: textul de afișat pe etichetă
-# - printer: numele imprimantei pe care se va face printarea
-# - preview: 0 pentru a nu afișa previzualizarea, 1-3 pentru o previzualizare de 3 secunde, >3 pentru o previzualizare de 5 secunde 
+# Cross-platform printer support
+try:
+    import cups
+    CUPS_AVAILABLE = True
+except ImportError:
+    CUPS_AVAILABLE = False
 
-# se recomanda instalarea si setarea imprimantei in sistemul de operare
-# pentru a putea fi utilizata de catre biblioteca CUPS 
-# se verifica proprietatile imprimantei in cups sa fie setata dimensiunea corecta a etichetei
-# pentru a instala biblioteca barcode se foloseste comanda pip install python-barcode
-# pentru a instala biblioteca PIL se foloseste comanda pip install pillow
-# pentru a instala biblioteca CUPS se foloseste comanda pip install pycups
-# pentru a instala biblioteca Tkinter se foloseste comanda sudo apt-get install python3-tk
+try:
+    import win32api
+    import win32print
+    WIN32_AVAILABLE = True
+except ImportError:
+    WIN32_AVAILABLE = False
+
+SYSTEM = platform.system()  # 'Linux', 'Windows', 'Darwin'
+
+
+def get_available_printers():
+    """
+    Get list of available printers (cross-platform).
+    
+    Returns:
+        list: List of available printer names, with "PDF" as fallback
+    """
+    try:
+        if SYSTEM == "Linux" and CUPS_AVAILABLE:
+            # Linux: Use CUPS
+            conn = cups.Connection()
+            printers = conn.getPrinters()
+            return list(printers.keys()) if printers else ["PDF"]
+        
+        elif SYSTEM == "Windows":
+            # Windows: Try win32print first
+            try:
+                printers = []
+                for printer_name in win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL):
+                    printers.append(printer_name[2])
+                return printers if printers else ["PDF"]
+            except:
+                # Fallback for Windows if win32print fails
+                return ["PDF"]
+        
+        elif SYSTEM == "Darwin":
+            # macOS: Use lpstat command
+            try:
+                result = subprocess.run(["lpstat", "-p", "-d"], 
+                                      capture_output=True, text=True)
+                printers = []
+                for line in result.stdout.split('\n'):
+                    if line.startswith('printer'):
+                        printer_name = line.split()[1]
+                        printers.append(printer_name)
+                return printers if printers else ["PDF"]
+            except:
+                return ["PDF"]
+        
+        else:
+            return ["PDF"]
+    
+    except Exception as e:
+        print(f"Error getting printers: {e}")
+        return ["PDF"]
 
 
 def create_label_image(text):
@@ -164,6 +208,71 @@ def create_label_pdf(text):
     return generator.create_label_pdf(sap_nr, cantitate, lot_number, pdf_filename)
 
 
+def print_to_printer(printer_name, file_path):
+    """
+    Print file to printer (cross-platform).
+    
+    Args:
+        printer_name (str): Name of printer or "PDF" for PDF output
+        file_path (str): Path to file to print
+        
+    Returns:
+        bool: True if successful
+    """
+    try:
+        if printer_name == "PDF":
+            # PDF output - file is already saved
+            print(f"PDF output: {file_path}")
+            return True
+        
+        elif SYSTEM == "Linux" and CUPS_AVAILABLE:
+            # Linux: Use CUPS
+            conn = cups.Connection()
+            conn.printFile(printer_name, file_path, "Label Print", {})
+            print(f"Label sent to printer: {printer_name}")
+            return True
+        
+        elif SYSTEM == "Windows":
+            # Windows: Use win32print or open with default printer
+            try:
+                if WIN32_AVAILABLE:
+                    import win32print
+                    import win32api
+                    # Print using the Windows API
+                    win32api.ShellExecute(0, "print", file_path, f'/d:"{printer_name}"', ".", 0)
+                    print(f"Label sent to printer: {printer_name}")
+                    return True
+                else:
+                    # Fallback: Open with default printer
+                    if file_path.endswith('.pdf'):
+                        os.startfile(file_path, "print")
+                    else:
+                        # For images, use default print application
+                        subprocess.run([f'notepad', '/p', file_path], check=False)
+                    print(f"Label sent to default printer")
+                    return True
+            except Exception as e:
+                print(f"Windows print error: {e}")
+                print("PDF backup saved as fallback")
+                return True
+        
+        elif SYSTEM == "Darwin":
+            # macOS: Use lp command
+            subprocess.run(["lp", "-d", printer_name, file_path], check=True)
+            print(f"Label sent to printer: {printer_name}")
+            return True
+        
+        else:
+            print(f"Unsupported system: {SYSTEM}")
+            return False
+    
+    except Exception as e:
+        print(f"Printer error: {str(e)}")
+        print("Label already saved to file as fallback...")
+        print(f"Label file: {file_path}")
+        return True
+
+
 def print_label_standalone(value, printer, preview=0, use_pdf=True):
     """
     Print a label with the specified text on the specified printer.
@@ -226,23 +335,11 @@ def print_label_standalone(value, printer, preview=0, use_pdf=True):
             
             # Print after preview
             print("Sending to printer...")
-            conn = cups.Connection()
-            conn.printFile(printer, temp_file, "Label Print", {})
-            return True
+            return print_to_printer(printer, temp_file)
         else:
             print("Direct printing without preview...")
             # Direct printing without preview (preview = 0)
-            try:
-                conn = cups.Connection()
-                conn.printFile(printer, temp_file, "Label Print", {})
-                print(f"Label sent to printer: {printer}")
-                return True
-            except Exception as e:
-                # If printing fails, save to file as fallback
-                print(f"Printer error: {str(e)}")
-                print("Label already saved to file as fallback...")
-                print(f"Label file: {temp_file}")
-                return True
+            return print_to_printer(printer, temp_file)
             
     except Exception as e:
         print(f"Error printing label: {str(e)}")
