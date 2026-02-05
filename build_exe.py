@@ -26,7 +26,7 @@ args = [
     '--windowed',  # Don't show console window
     '--name=LabelPrinter',  # Executable name
     '--distpath=./dist',  # Output directory
-    '--buildpath=./build',  # Build directory
+    '--workpath=./build',  # Work directory (was --buildpath)
     '--hidden-import=kivy',
     '--hidden-import=kivy.core.window',
     '--hidden-import=kivy.core.text',
