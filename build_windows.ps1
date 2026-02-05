@@ -1,6 +1,7 @@
 # Label Printer - Windows Build Script (Single File EXE)
 # This script builds a standalone LabelPrinter.exe on Windows
-# Requirements: Python 3.10+ installed and in PATH
+# Requirements: Python 3.10-3.13 installed and in PATH
+# Note: Python 3.14+ may have compatibility issues
 
 Write-Host ""
 Write-Host "========================================================"
@@ -17,7 +18,7 @@ try {
     }
 } catch {
     Write-Host "ERROR: Python is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "Please install Python 3.10+ from https://www.python.org/"
+    Write-Host "Please install Python 3.10-3.13 from https://www.python.org/"
     Write-Host "Make sure to check 'Add Python to PATH' during installation"
     Read-Host "Press Enter to exit"
     exit 1

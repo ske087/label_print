@@ -1,7 +1,8 @@
 @echo off
 REM Label Printer - Windows Build Script (Single File EXE)
 REM This script builds a standalone LabelPrinter.exe on Windows
-REM Requirements: Python 3.10+ installed and in PATH
+REM Requirements: Python 3.10-3.13 installed and in PATH
+REM Note: Python 3.14+ may have compatibility issues
 
 setlocal enabledelayedexpansion
 
@@ -16,7 +17,7 @@ REM Check if Python is installed
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.10+ from https://www.python.org/
+    echo Please install Python 3.10-3.13 from https://www.python.org/
     echo Make sure to check "Add Python to PATH" during installation
     pause
     exit /b 1

@@ -4,8 +4,9 @@ This guide explains how to build a standalone `LabelPrinter.exe` single-file exe
 
 ## Prerequisites
 
-1. **Python 3.10 or higher** - Download from https://www.python.org/
+1. **Python 3.10, 3.11, 3.12, or 3.13** - Download from https://www.python.org/
    - ⚠️ **IMPORTANT**: Check "Add Python to PATH" during installation
+   - ⚠️ **Note**: Python 3.14+ may have compatibility issues with Kivy 2.2.1
    - Verify: Open Command Prompt and type `python --version`
 
 2. **Git** (optional, for cloning the repository)
@@ -127,7 +128,17 @@ You can:
 - Make sure dependencies installed correctly: `pip install kivy==2.2.1`
 - Check internet connection
 
-### Error: "LabelPrinter.exe won't start"
+### Python 3.14 Compatibility Issues
+If you have Python 3.14 installed and get errors like:
+- `ModuleNotFoundError: No module named 'kivy'`
+- `ImportError: DLL load failed`
+- PyInstaller compatibility errors
+
+**Solution:**
+- Install Python 3.11, 3.12, or 3.13 instead
+- Download from: https://www.python.org/downloads/
+- Uninstall Python 3.14 first
+- Then use one of the recommended versions
 - Make sure all files are in the project folder:
   - `label_printer_gui.py`
   - `print_label.py`
