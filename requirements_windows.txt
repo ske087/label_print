@@ -1,0 +1,5 @@
+python-barcode
+pillow
+kivy
+reportlab
+pyinstaller
