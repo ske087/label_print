@@ -1,6 +1,15 @@
 """
 PyInstaller build script for Label Printer GUI
 Run this to create a standalone Windows executable
+
+IMPORTANT: This script MUST be run on Windows to generate a Windows .exe file.
+If run on Linux/macOS, it will create a Linux/macOS binary that won't work on Windows.
+
+To build for Windows:
+1. Copy this project to a Windows machine
+2. Install dependencies: pip install -r requirements_gui.txt
+3. Run this script: python build_exe.py
+4. The Windows .exe will be created in the dist/ folder
 """
 
 import os
