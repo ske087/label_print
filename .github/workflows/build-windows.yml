@@ -9,7 +9,7 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     
     strategy:
       matrix:
@@ -22,23 +22,28 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        pip install python-barcode pillow reportlab
-        pip install kivy==2.2.1
-        pip install pyinstaller==6.1.0
+        pip install python-barcode pillow reportlab kivy==2.2.1 pyinstaller==6.1.0
     
     - name: Build executable with PyInstaller
       run: |
-        pyinstaller label_printer_gui.py --onefile --windowed --name=LabelPrinter --distpath=./dist --workpath=./build --hidden-import=kivy --hidden-import=PIL --hidden-import=barcode --hidden-import=reportlab --hidden-import=print_label --hidden-import=print_label_pdf -y
+        pyinstaller label_printer_gui.py --onedir --windowed --name=LabelPrinter --distpath=./dist --workpath=./build --hidden-import=kivy --hidden-import=PIL --hidden-import=barcode --hidden-import=reportlab --hidden-import=print_label --hidden-import=print_label_pdf -y --noupx
+    
+    - name: Create single executable zip
+      run: |
+        cd dist
+        7z a -r LabelPrinter.zip LabelPrinter/
+      shell: powershell
     
     - name: Upload Windows executable as artifact
       uses: actions/upload-artifact@v4
       with:
         name: LabelPrinter-Windows
-        path: dist/LabelPrinter.exe
+        path: dist/LabelPrinter.zip
         retention-days: 30
     
     - name: Create Release and Upload
