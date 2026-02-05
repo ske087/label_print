@@ -24,22 +24,12 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements_windows.txt
     
-    - name: Verify build setup
-      run: |
-        echo "Python version:"
-        python --version
-        echo "Installed packages:"
-        pip list
-        echo "Current directory:"
-        cd %CD%
-        echo "Files in directory:"
-        dir /B
-    
     - name: Build executable with PyInstaller
-      run: python build_exe.py
+      run: |
+        pyinstaller label_printer_gui.py --onefile --windowed --name=LabelPrinter --distpath=./dist --buildpath=./build --hidden-import=kivy --hidden-import=kivy.core.window --hidden-import=kivy.core.text --hidden-import=kivy.core.image --hidden-import=kivy.uix.boxlayout --hidden-import=kivy.uix.gridlayout --hidden-import=kivy.uix.label --hidden-import=kivy.uix.textinput --hidden-import=kivy.uix.button --hidden-import=kivy.uix.spinner --hidden-import=kivy.uix.scrollview --hidden-import=kivy.uix.popup --hidden-import=kivy.clock --hidden-import=kivy.graphics --hidden-import=PIL --hidden-import=barcode --hidden-import=reportlab --hidden-import=print_label --hidden-import=print_label_pdf
     
     - name: Upload Windows executable as artifact
       uses: actions/upload-artifact@v4

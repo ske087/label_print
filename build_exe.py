@@ -7,14 +7,14 @@ If run on Linux/macOS, it will create a Linux/macOS binary that won't work on Wi
 
 To build for Windows:
 1. Copy this project to a Windows machine
-2. Install dependencies: pip install -r requirements_gui.txt
+2. Install dependencies: pip install -r requirements_windows.txt
 3. Run this script: python build_exe.py
 4. The Windows .exe will be created in the dist/ folder
 """
 
 import os
 import sys
-from PyInstaller import __main__ as pyi_main
+import subprocess
 
 # Get the current directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -58,15 +58,26 @@ if __name__ == '__main__':
     # Change to script directory
     os.chdir(script_dir)
     
-    # Run PyInstaller
-    pyi_main.run(args)
-    
-    print("\n" + "=" * 60)
-    print("Build Complete!")
-    print("=" * 60)
-    print("\nExecutable location: ./dist/LabelPrinter.exe")
-    print("\nYou can now:")
-    print("1. Double-click LabelPrinter.exe to run")
-    print("2. Share the exe with others")
-    print("3. Create a shortcut on desktop")
-    print("\nNote: First run may take a moment as Kivy initializes")
+    # Run PyInstaller directly with subprocess for better error reporting
+    try:
+        result = subprocess.run(['pyinstaller'] + args, check=True)
+        
+        print("\n" + "=" * 60)
+        print("Build Complete!")
+        print("=" * 60)
+        print("\nExecutable location: ./dist/LabelPrinter.exe")
+        print("\nYou can now:")
+        print("1. Double-click LabelPrinter.exe to run")
+        print("2. Share the exe with others")
+        print("3. Create a shortcut on desktop")
+        print("\nNote: First run may take a moment as Kivy initializes")
+    except subprocess.CalledProcessError as e:
+        print("\n" + "=" * 60)
+        print("Build Failed!")
+        print("=" * 60)
+        print(f"\nError code: {e.returncode}")
+        print("\nPlease check the error messages above for details.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nFatal error: {e}")
+        sys.exit(1)
