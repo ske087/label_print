@@ -1,5 +1,5 @@
 python-barcode
 pillow
-kivy
+kivy>=2.1.0
 reportlab
-pyinstaller
+pyinstaller>=6.0.0

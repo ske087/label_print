@@ -27,6 +27,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements_windows.txt
     
+    - name: Verify build setup
+      run: |
+        echo "Python version:"
+        python --version
+        echo "Installed packages:"
+        pip list
+        echo "Current directory:"
+        cd %CD%
+        echo "Files in directory:"
+        dir /B
+    
     - name: Build executable with PyInstaller
       run: python build_exe.py
     
