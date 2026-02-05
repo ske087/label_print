@@ -15,7 +15,7 @@ jobs:
         python-version: ['3.11']
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -32,30 +32,16 @@ jobs:
       run: python build_exe.py
     
     - name: Upload Windows executable as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: LabelPrinter-Windows
         path: dist/LabelPrinter.exe
         retention-days: 30
     
-    - name: Create Release
+    - name: Create Release and Upload
       if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/LabelPrinter.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    
-    - name: Upload to Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/LabelPrinter.exe
-        asset_name: LabelPrinter.exe
-        asset_content_type: application/octet-stream
